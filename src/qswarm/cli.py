@@ -99,8 +99,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.subcommand == "validate":
         return validate_environment(verbose=args.verbose)
     elif args.subcommand == "demo":
-        from qswarm.policies.heuristic import run_heuristic_demo
-        run_heuristic_demo(scenario=args.scenario, seed=args.seed)
+        if args.policy == "heuristic":
+            from qswarm.policies.heuristic import run_heuristic_demo
+            run_heuristic_demo(scenario=args.scenario, seed=args.seed)
+        else:
+            from qswarm.training.evaluate import evaluate_policy
+            evaluate_policy(
+                policy_type=args.policy,
+                scenario=args.scenario,
+                seeds=[args.seed],
+                verbose=True,
+            )
         return 0
     elif args.subcommand == "benchmark":
         from qswarm.experiments.runner import BenchmarkRunner

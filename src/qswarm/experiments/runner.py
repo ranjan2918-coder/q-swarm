@@ -181,6 +181,7 @@ class BenchmarkRunner:
             json.dump(raw_data, f, indent=2, default=str)
 
         latest_file = os.path.join("results", "latest_dir.txt")
+        os.makedirs("results", exist_ok=True)
         with open(latest_file, "w") as f:
             f.write(self.output_dir)
 

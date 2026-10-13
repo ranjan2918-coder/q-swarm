@@ -235,7 +235,7 @@ def run_qaoa_benchmark(num_nodes: int = 4, comm_range: float = 8.0, seed: int = 
     qaoa = QAOARelayOptimizer(graph, p_steps=1)
     qaoa_val, qaoa_sol, qaoa_time, depth, cx_count = qaoa.solve(max_iter=20)
 
-    approx_ratio = qaoa_val / max(1e-4, exact_val)
+    approx_ratio = qaoa_val / max(1e-4, abs(exact_val)) if exact_val != 0.0 else 0.0
 
     return OptimizationComparisonResult(
         graph_nodes=graph.number_of_nodes(),

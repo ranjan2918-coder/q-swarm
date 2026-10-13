@@ -114,7 +114,8 @@ class VQCExecutionEngine:
                 depol = self.noise_model.get("depolarizing_error", 0.0)
                 ro_err = self.noise_model.get("readout_error", 0.0)
                 ev = ev * (1.0 - 2.0 * depol)
-                noise_jitter = np.random.normal(0.0, (depol + ro_err) * 0.5)
+                # Use a dedicated Generator instead of the global numpy random state
+                noise_jitter = float(np.random.default_rng().normal(0.0, (depol + ro_err) * 0.5))
                 ev += noise_jitter
             exp_vals[i] = np.clip(ev, -1.0, 1.0)
 
@@ -289,7 +290,9 @@ class HybridVQCPolicy(nn.Module):
             return int(torch.argmax(q_vals, dim=-1).item())
 
     def save(self, filepath: str):
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        dirpath = os.path.dirname(filepath)
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
         torch.save({
             "model_state": self.state_dict(),
             "num_qubits": self.num_qubits,
@@ -302,7 +305,7 @@ class HybridVQCPolicy(nn.Module):
 
     @classmethod
     def load(cls, filepath: str) -> "HybridVQCPolicy":
-        checkpoint = torch.load(filepath, map_location="cpu")
+        checkpoint = torch.load(filepath, map_location="cpu", weights_only=False)
         model = cls(
             num_qubits=checkpoint.get("num_qubits", 4),
             num_layers=checkpoint.get("num_layers", 2),

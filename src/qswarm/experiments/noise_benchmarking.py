@@ -29,12 +29,12 @@ class ReadoutMitigator:
     def __init__(self, readout_error_rate: float = 0.02, num_qubits: int = 4):
         self.p_error = readout_error_rate
         self.num_qubits = num_qubits
-        # 1-qubit confusion matrix [[1-p, p], [p, 1-p]]
-        self.m_inv_1q = np.array([
+        # 1-qubit calibration matrix [[1-p, p], [p, 1-p]]
+        self.m_cal_1q = np.array([
             [1.0 - self.p_error, self.p_error],
             [self.p_error, 1.0 - self.p_error],
         ])
-        self.inv_m = np.linalg.inv(self.m_inv_1q)
+        self.inv_m = np.linalg.inv(self.m_cal_1q)
 
     def mitigate_expectations(self, noisy_expectations: np.ndarray) -> np.ndarray:
         """Apply 1-qubit readout mitigation to Pauli-Z expectations."""
@@ -62,13 +62,15 @@ def evaluate_noise_regimes(
         {"name": "GenericBackendV2 (5Q Superconducting)", "depol": 0.025, "ro": 0.04, "backend": "generic_backend"},
     ]
 
-    # Generate 50 sample observations to measure action agreement with ideal policy
+    # Collect 40 individual drone observations (10 steps x 4 drones)
     sample_env = SwarmEnv(scenario=scenario, num_drones=4)
     obs_samples = []
     o, _ = sample_env.reset(seed=123)
-    for _ in range(15):
-        obs_samples.extend(o)
-        o, _, d, t, _ = sample_env.step([1, 2, 3, 4])
+    for _ in range(10):
+        # Collect per-drone observations from the 4-drone obs matrix
+        for drone_idx in range(sample_env.num_drones):
+            obs_samples.append(o[drone_idx])
+        o, _, d, t, _ = sample_env.step([1, 2, 3, 0])
         if d or t:
             break
     obs_samples = np.array(obs_samples[:40])

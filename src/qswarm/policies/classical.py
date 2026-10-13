@@ -61,7 +61,9 @@ class ClassicalMLPPolicy(nn.Module):
             return int(torch.argmax(q_vals, dim=-1).item())
 
     def save(self, filepath: str):
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        dirpath = os.path.dirname(filepath)
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
         torch.save({
             "model_state": self.state_dict(),
             "input_dim": self.input_dim,
@@ -72,7 +74,7 @@ class ClassicalMLPPolicy(nn.Module):
 
     @classmethod
     def load(cls, filepath: str) -> "ClassicalMLPPolicy":
-        checkpoint = torch.load(filepath, map_location="cpu")
+        checkpoint = torch.load(filepath, map_location="cpu", weights_only=False)
         model = cls(
             input_dim=checkpoint["input_dim"],
             hidden_dims=checkpoint.get("hidden_dims", [64, 32]),
@@ -120,7 +122,9 @@ class ClassicalMatchedPolicy(nn.Module):
             return int(torch.argmax(q_vals, dim=-1).item())
 
     def save(self, filepath: str):
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        dirpath = os.path.dirname(filepath)
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
         torch.save({
             "model_state": self.state_dict(),
             "input_dim": self.input_dim,
@@ -130,7 +134,7 @@ class ClassicalMatchedPolicy(nn.Module):
 
     @classmethod
     def load(cls, filepath: str) -> "ClassicalMatchedPolicy":
-        checkpoint = torch.load(filepath, map_location="cpu")
+        checkpoint = torch.load(filepath, map_location="cpu", weights_only=False)
         model = cls(input_dim=checkpoint["input_dim"], output_dim=checkpoint["output_dim"])
         model.load_state_dict(checkpoint["model_state"])
         model.eval()

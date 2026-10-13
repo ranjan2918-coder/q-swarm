@@ -219,7 +219,7 @@ class SwarmEnv(gym.Env):
         positions = np.array([d.position for d in self.drones])
         alive_mask = np.array([d.is_alive for d in self.drones])
         graph = self.mesh_network.build_graph(positions, alive_mask, self.obstacle_field)
-        self.last_mesh_metrics = self.mesh_network.compute_metrics(graph, sum(alive_mask))
+        self.last_mesh_metrics = self.mesh_network.compute_metrics(graph, int(np.sum(alive_mask)))
         self.coverage_grid.update_coverage(positions, sensing_radius=self.sensing_radius)
 
         obs = self._get_observations(graph)
@@ -243,11 +243,12 @@ class SwarmEnv(gym.Env):
 
         # 2. Previous distance to active targets for delta-progress computation
         active_targets = [t for t in self.targets if not t.is_reached]
-        old_min_dists = []
+        # Record old distances only for targets that we'll compare after the step
+        old_min_dists_map = {}
         for t in active_targets:
             dists = [np.linalg.norm(d.position - t.position) for d in self.drones if d.is_alive]
             if dists:
-                old_min_dists.append(min(dists))
+                old_min_dists_map[t.target_id] = min(dists)
 
         # 3. Kinematic step for each drone
         step_collisions = 0
@@ -296,17 +297,17 @@ class SwarmEnv(gym.Env):
                     targets_reached_this_step += 1
                     break
 
-        # 5. Measure distance delta progress
-        new_min_dists = []
+        # 5. Measure distance delta progress only for targets still NOT reached this step.
+        # BUG FIX: old_min_dists and new_min_dists must correspond to the same targets
+        # so we compare per-target using the shared map keyed by target_id.
+        target_dist_delta = 0.0
         for target in active_targets:
-            if not target.is_reached:
+            if not target.is_reached and target.target_id in old_min_dists_map:
                 dists = [np.linalg.norm(d.position - target.position) for d in alive_drones]
                 if dists:
-                    new_min_dists.append(min(dists))
-
-        target_dist_delta = 0.0
-        if old_min_dists and new_min_dists:
-            target_dist_delta = float(np.sum(old_min_dists) - np.sum(new_min_dists))
+                    new_dist = min(dists)
+                    target_dist_delta += old_min_dists_map[target.target_id] - new_dist
+        target_dist_delta = float(target_dist_delta)
 
         # 6. Update exploration coverage grid
         positions = np.array([d.position for d in self.drones])
@@ -315,7 +316,7 @@ class SwarmEnv(gym.Env):
 
         # 7. Build communication graph and compute mesh metrics
         graph = self.mesh_network.build_graph(positions, alive_mask, self.obstacle_field)
-        mesh_metrics = self.mesh_network.compute_metrics(graph, sum(alive_mask))
+        mesh_metrics = self.mesh_network.compute_metrics(graph, int(np.sum(alive_mask)))
         self.last_mesh_metrics = mesh_metrics
 
         # 8. Termination checks
